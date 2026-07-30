@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<title>AUS — Cài đặt</title>
+<style>
+  body { width: 300px; font-family: Arial, sans-serif; margin: 0; padding: 16px; color: #141414; }
+  .brand { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .brand img { width: 24px; height: 24px; }
+  .brand span { font-size: 14px; font-weight: bold; }
+  label { font-size: 11px; color: #8B8A82; display: block; margin-bottom: 4px; }
+  input[type="password"], input[type="text"] {
+    width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #E4E2DA;
+    border-radius: 8px; font-size: 12px; margin-bottom: 8px;
+  }
+  button {
+    width: 100%; padding: 9px 0; border: none; border-radius: 8px; background: #141414;
+    color: #fff; font-size: 12px; cursor: pointer; margin-bottom: 6px;
+  }
+  button.secondary { background: #fff; color: #141414; border: 1px solid #E4E2DA; }
+  .status { font-size: 11px; color: #185FA5; margin-top: 4px; min-height: 14px; }
+  .stats { font-size: 11px; color: #5F5E5A; margin-top: 12px; border-top: 1px solid #E4E2DA; padding-top: 10px; }
+  .hint { font-size: 10px; color: #8B8A82; margin-top: 4px; line-height: 1.4; }
+  a { color: #185FA5; }
+</style>
+</head>
+<body>
+  <div class="brand">
+    <img src="../icons/icon32.png" alt="AUS" />
+    <span>Are you sure? — Cài đặt</span>
+  </div>
+
+  <label for="apiKey">Gemini API Key (tuỳ chọn)</label>
+  <input type="password" id="apiKey" placeholder="Dán API key tại đây..." />
+  <div class="hint">
+    Chưa cấu hình → extension chạy ở <strong>Chế độ demo</strong> (dữ liệu mẫu).
+    Lấy API key miễn phí tại <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a>.
+  </div>
+  <button id="save">Lưu cấu hình</button>
+  <div class="status" id="status"></div>
+
+  <div class="stats">
+    <div id="cacheCount">Cache: đang tải...</div>
+    <div id="feedbackCount">Feedback logs: đang tải...</div>
+    <button class="secondary" id="clearCache">Xoá cache</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
