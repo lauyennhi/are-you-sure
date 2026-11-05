@@ -9,7 +9,9 @@
 //  - AUS_OPEN_COLLECTION / AUS_DISABLE_SITE
 // =====================================================
 
-const DEFAULT_MODEL = "gemini-2.5-flash"; // có thể đổi trong popup cài đặt
+const DEFAULT_MODEL = "gemini-3.8-flash"; // có thể đổi trong popup cài đặt
+// Nếu model bị ngừng/không tồn tại (404) → tự thử model kế tiếp
+const FALLBACK_MODELS = ["gemini-3.8-flash", "gemini-flash-latest"];
 const CACHE_TTL_SEC = 86400 * 3;
 const CACHE_MAX_ENTRIES = 200;
 
@@ -154,7 +156,7 @@ async function getSettings() {
   return { apiKey: (s.geminiApiKey || "").trim(), model: (s.geminiModel || DEFAULT_MODEL).trim() };
 }
 
-async function geminiRequest({ apiKey, model, system, contents, json, grounded, temperature = 0.3 }) {
+async function geminiRequestOnce({ apiKey, model, system, contents, json, grounded, temperature = 0.3 }) {
   const body = {
     system_instruction: { parts: [{ text: system }] },
     contents,
@@ -187,6 +189,25 @@ async function geminiRequest({ apiKey, model, system, contents, json, grounded, 
     .filter((w) => w?.uri)
     .map((w) => ({ name: w.title || w.uri, url: w.uri }));
   return { text, sources };
+}
+
+async function geminiRequest(opts) {
+  const tried = new Set();
+  const candidates = [opts.model, ...FALLBACK_MODELS];
+  let lastErr;
+  for (const model of candidates) {
+    if (!model || tried.has(model)) continue;
+    tried.add(model);
+    try {
+      const res = await geminiRequestOnce({ ...opts, model });
+      if (model !== opts.model) chrome.storage.sync.set({ geminiModel: model }).catch(() => {}); // nhớ model chạy được
+      return res;
+    } catch (err) {
+      lastErr = err;
+      if (err.status !== 404) throw err; // lỗi khác (key sai, hết hạn mức...) → báo ngay
+    }
+  }
+  throw lastErr;
 }
 
 function parseJsonLoose(text) {
