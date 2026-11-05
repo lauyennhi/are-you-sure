@@ -85,7 +85,14 @@ function loadFonts() {
   }
 }
 
-const icon = () => chrome.runtime.getURL("icons/icon24.png");
+// Lấy sẵn URL icon lúc script còn kết nối. Sau khi extension được cập nhật/tải lại mà trang chưa F5,
+// mọi lệnh chrome.runtime.* trong script cũ sẽ báo "Extension context invalidated".
+let ICON_URL = "";
+try { ICON_URL = chrome.runtime.getURL("icons/icon24.png"); } catch { /* bỏ qua */ }
+const icon = () => ICON_URL;
+function alive() {
+  try { return !!chrome.runtime?.id; } catch { return false; }
+}
 const $ = (sel, el = layerEl) => el.querySelector(sel);
 
 function escapeHtml(s) {
@@ -148,8 +155,20 @@ document.addEventListener("keyup", (e) => {
   }
 });
 
+let staleWarned = false;
 function handleSelection() {
   if (!enabled || disabledSites.includes(location.hostname)) return;
+  if (!alive()) {
+    // chỉ nhắc một lần, khi người dùng thật sự bôi đen một đoạn đủ dài
+    const t = window.getSelection()?.toString().trim() || "";
+    if (!staleWarned && t.split(/\s+/).filter(Boolean).length >= MIN_WORDS) {
+      staleWarned = true;
+      initRoot();
+      layerEl.innerHTML = "";
+      toast("AUS vừa được cập nhật — nhấn F5 để tải lại trang rồi dùng tiếp.", 5000);
+    }
+    return;
+  }
   const sel = window.getSelection();
   if (!sel || sel.isCollapsed || !sel.rangeCount) return;
   if (inOurUI(sel.anchorNode)) return;
@@ -352,14 +371,15 @@ function showDashboard() {
   armSlowHint();
   if (session.analysis) return showTab("analysis");
 
-  send({ type: "AUS_ANALYZE", selectedText: session.text, contextText: session.context, url: location.href })
+  const s = session;
+  send({ type: "AUS_ANALYZE", selectedText: s.text, contextText: s.context, url: location.href })
     .then((res) => {
-      if (!session) return;
-      session.analysis = res.data;
-      session.queryHash = res.queryHash || "";
+      if (session !== s) return; // người dùng đã đóng / chọn đoạn khác
+      s.analysis = res.data;
+      s.queryHash = res.queryHash || "";
       showTab("analysis");
     })
-    .catch((err) => showError(err.message, showDashboard));
+    .catch((err) => { if (session === s) showError(err.message, showDashboard); });
 }
 
 let slowTimer = null;
@@ -477,21 +497,22 @@ function renderPerspectives() {
     layerEl.innerHTML = shell(loadingHtml("Đang tìm các góc nhìn khác & nguồn kiểm chứng..."), "perspectives");
     bindShell();
     armSlowHint();
+    const s = session;
     send({
       type: "AUS_PERSPECTIVES",
-      selectedText: session.text,
-      contextText: session.context,
-      comments: session.comments,
-      coreClaim: session.analysis?.core_claim,
+      selectedText: s.text,
+      contextText: s.context,
+      comments: s.comments,
+      coreClaim: s.analysis?.core_claim,
       url: location.href,
     })
       .then((res) => {
-        if (!session) return;
-        session.perspectives = res.data;
+        if (session !== s) return;
+        s.perspectives = res.data;
         if ($(".tab.active")?.dataset.tab === "perspectives") renderPerspectives();
       })
       .catch((err) => {
-        if (!layerEl || !$(".tab.active") || $(".tab.active").dataset.tab !== "perspectives") return;
+        if (session !== s || !layerEl || !$(".tab.active") || $(".tab.active").dataset.tab !== "perspectives") return;
         $(".dash-body").innerHTML = `<div class="error"><p>⚠ ${escapeHtml(err.message)}</p>
           <div class="btn-row"><button class="btn primary" data-act="retry">Thử lại</button></div></div>`;
         $('[data-act="retry"]').addEventListener("click", renderPerspectives);
@@ -551,25 +572,26 @@ function renderChat() {
 
   const submit = async () => {
     const text = ta.value.trim();
-    if (!text || busy) return;
+    if (!text || busy || !session) return;
+    const s = session;
     busy = true;
     ta.value = "";
-    session.chat.push({ role: "user", text });
+    s.chat.push({ role: "user", text });
     box.insertAdjacentHTML("beforeend", `<div class="msg user">${renderChatText(text)}</div><div class="msg model typing"><span></span><span></span><span></span></div>`);
     box.scrollTop = box.scrollHeight;
     try {
       const res = await send({
         type: "AUS_CHAT",
-        selectedText: session.text,
+        selectedText: s.text,
         coreClaim: a?.core_claim,
         summary: a?.summary,
-        history: session.chat,
+        history: s.chat,
       });
-      session.chat.push({ role: "model", text: res.text });
+      s.chat.push({ role: "model", text: res.text });
       box.querySelector(".typing")?.remove();
       box.insertAdjacentHTML("beforeend", `<div class="msg model">${renderChatText(res.text)}</div>`);
     } catch (err) {
-      session.chat.pop();
+      s.chat.pop();
       box.querySelector(".typing")?.remove();
       box.insertAdjacentHTML("beforeend", `<div class="msg model err">⚠ ${escapeHtml(err.message)}</div>`);
     }
@@ -643,13 +665,13 @@ function onReport() {
   toast("Cảm ơn phản hồi!");
 }
 
-function toast(msg) {
+function toast(msg, ms = 2400) {
   layerEl.querySelector(".toast")?.remove();
   const t = document.createElement("div");
   t.className = "toast";
   t.textContent = msg;
   layerEl.appendChild(t);
-  setTimeout(() => t.remove(), 2400);
+  setTimeout(() => t.remove(), ms);
 }
 
 // ---------------------------------------------------

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Are You Sure (AUS)",
   "short_name": "AUS",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Real-time Cognitive Nudge Engine — bôi đen một đoạn văn để xem phân tích phân cực, bong bóng lọc, buồng vang, thiên kiến và các góc nhìn khác có nguồn.",
   "icons": {
     "16": "icons/icon16.png",

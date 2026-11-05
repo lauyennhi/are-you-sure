@@ -549,6 +549,15 @@ async function handleDisableSite(msg) {
   return {};
 }
 
+// Khi cập nhật: xoá model do bản cũ tự lưu (2.5-flash đã ngừng, 3.8-flash hay quá tải/treo)
+chrome.runtime.onInstalled.addListener(async ({ reason }) => {
+  if (reason !== "update") return;
+  const { geminiModel } = await chrome.storage.sync.get("geminiModel");
+  if (["gemini-2.5-flash", "gemini-3.8-flash", "gemini-flash-latest"].includes(geminiModel)) {
+    await chrome.storage.sync.remove("geminiModel");
+  }
+});
+
 const HANDLERS = {
   AUS_ANALYZE: handleAnalyze,
   AUS_PERSPECTIVES: handlePerspectives,
