@@ -1,33 +1,49 @@
-const apiKeyInput = document.getElementById("apiKey");
-const statusEl = document.getElementById("status");
-const cacheCountEl = document.getElementById("cacheCount");
-const feedbackCountEl = document.getElementById("feedbackCount");
+const $ = (id) => document.getElementById(id);
 
-async function loadSettings() {
-  const { geminiApiKey } = await chrome.storage.sync.get("geminiApiKey");
-  if (geminiApiKey) apiKeyInput.value = geminiApiKey;
+async function load() {
+  const s = await chrome.storage.sync.get(["geminiApiKey", "geminiModel", "ausEnabled", "disabledSites"]);
+  $("apiKey").value = s.geminiApiKey || "";
+  $("model").value = s.geminiModel || "";
+  $("enabled").checked = s.ausEnabled !== false;
+  renderMuted(s.disabledSites || []);
   refreshStats();
+}
+
+function renderMuted(sites) {
+  $("muted").innerHTML = sites.length
+    ? "Đã tắt ở: " + sites.map((d) => `<span>${d.replace(/[<>&"]/g, "")}<b data-d="${d.replace(/[<>&"]/g, "")}" title="Bật lại">✕</b></span>`).join("")
+    : "";
 }
 
 async function refreshStats() {
   const local = await chrome.storage.local.get(null);
-  const cacheKeys = Object.keys(local).filter((k) => k.startsWith("cache_"));
-  const feedbackLogs = local["feedback_logs"] || [];
-  cacheCountEl.textContent = `Cache: ${cacheKeys.length} mục đã lưu`;
-  feedbackCountEl.textContent = `Feedback logs: ${feedbackLogs.length} phản hồi`;
+  $("collectionCount").textContent = `Bộ sưu tập: ${(local.aus_collection || []).length} mục`;
+  $("cacheCount").textContent = `Cache: ${Object.keys(local).filter((k) => k.startsWith("cache_")).length} mục`;
 }
 
-document.getElementById("save").addEventListener("click", async () => {
-  await chrome.storage.sync.set({ geminiApiKey: apiKeyInput.value.trim() });
-  statusEl.textContent = "Đã lưu ✓";
-  setTimeout(() => (statusEl.textContent = ""), 2000);
+$("enabled").addEventListener("change", () => chrome.storage.sync.set({ ausEnabled: $("enabled").checked }));
+
+$("save").addEventListener("click", async () => {
+  await chrome.storage.sync.set({ geminiApiKey: $("apiKey").value.trim(), geminiModel: $("model").value.trim() });
+  $("status").textContent = "Đã lưu ✓";
+  setTimeout(() => ($("status").textContent = ""), 2000);
 });
 
-document.getElementById("clearCache").addEventListener("click", async () => {
+$("muted").addEventListener("click", async (e) => {
+  const d = e.target.dataset?.d;
+  if (!d) return;
+  const { disabledSites = [] } = await chrome.storage.sync.get("disabledSites");
+  const next = disabledSites.filter((x) => x !== d);
+  await chrome.storage.sync.set({ disabledSites: next });
+  renderMuted(next);
+});
+
+$("openCollection").addEventListener("click", () => chrome.tabs.create({ url: chrome.runtime.getURL("collection/collection.html") }));
+
+$("clearCache").addEventListener("click", async () => {
   const local = await chrome.storage.local.get(null);
-  const cacheKeys = Object.keys(local).filter((k) => k.startsWith("cache_"));
-  await chrome.storage.local.remove(cacheKeys);
+  await chrome.storage.local.remove(Object.keys(local).filter((k) => k.startsWith("cache_")));
   refreshStats();
 });
 
-loadSettings();
+load();
