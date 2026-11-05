@@ -101,7 +101,7 @@ function escapeHtml(s) {
   return d.innerHTML;
 }
 
-// Markdown tối giản cho chat: **đậm**, "- " gạch đầu dòng, xuống dòng
+// Markdown tối giản cho chat: **đậm**, *nghiêng*, "- " gạch đầu dòng, xuống dòng
 function renderChatText(s) {
   const lines = escapeHtml(s).split("\n");
   let html = "", inList = false;
@@ -116,7 +116,9 @@ function renderChatText(s) {
     }
   }
   if (inList) html += "</ul>";
-  return html.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+  return html
+    .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
+    .replace(/(^|[^*\w])\*([^*\n]+?)\*(?![*\w])/g, "$1<i>$2</i>");
 }
 
 function send(msg) {
