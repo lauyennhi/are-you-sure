@@ -156,38 +156,65 @@ async function getSettings() {
   return { apiKey: (s.geminiApiKey || "").trim(), model: (s.geminiModel || DEFAULT_MODEL).trim() };
 }
 
-async function geminiRequestOnce({ apiKey, model, system, contents, json, grounded, temperature = 0.3 }) {
+async function geminiRequestOnce({ apiKey, model, system, contents, json, grounded, temperature = 0.3, timeoutMs = 40000, thinking = true }) {
   const body = {
     system_instruction: { parts: [{ text: system }] },
     contents,
     generationConfig: { temperature },
   };
+  // Giảm "suy nghĩ" để trả lời nhanh (nếu model không hỗ trợ → thử lại không có)
+  if (thinking) body.generationConfig.thinkingConfig = { thinkingLevel: "low" };
   if (grounded) body.tools = [{ google_search: {} }];
   else if (json) body.generationConfig.responseMimeType = "application/json";
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-      body: JSON.stringify(body),
-    }
-  );
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  let res;
+  try {
+    res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+        body: JSON.stringify(body),
+        signal: ctrl.signal,
+      }
+    );
+  } catch (e) {
+    clearTimeout(timer);
+    const err = new Error(e.name === "AbortError" ? `AI phản hồi quá lâu (>${Math.round(timeoutMs / 1000)}s). Hãy thử lại hoặc chọn model nhanh hơn trong popup.` : `Không kết nối được tới Gemini: ${e.message}`);
+    err.status = e.name === "AbortError" ? "timeout" : "network";
+    throw err;
+  }
   if (!res.ok) {
+    clearTimeout(timer);
     const errText = await res.text();
     let msg = errText;
     try { msg = JSON.parse(errText).error?.message || errText; } catch {}
+    if (res.status === 400 && thinking && /think/i.test(msg)) {
+      return geminiRequestOnce({ apiKey, model, system, contents, json, grounded, temperature, timeoutMs, thinking: false });
+    }
     const err = new Error(`Gemini API lỗi ${res.status}: ${msg.slice(0, 300)}`);
     err.status = res.status;
     throw err;
   }
-  const data = await res.json();
+  let data;
+  try { data = await res.json(); } catch (e) {
+    const err = new Error("AI phản hồi quá lâu hoặc bị ngắt giữa chừng. Hãy thử lại.");
+    err.status = "timeout";
+    throw err;
+  } finally { clearTimeout(timer); }
   const cand = data.candidates?.[0];
   const text = (cand?.content?.parts || []).map((p) => p.text || "").join("");
   const sources = (cand?.groundingMetadata?.groundingChunks || [])
     .map((c) => c.web)
     .filter((w) => w?.uri)
     .map((w) => ({ name: w.title || w.uri, url: w.uri }));
+  if (!text) {
+    const err = new Error(`AI không trả về nội dung${cand?.finishReason ? ` (${cand.finishReason})` : ""}. Thử lại hoặc bôi đoạn khác.`);
+    err.status = "empty";
+    throw err;
+  }
   return { text, sources };
 }
 
@@ -443,11 +470,11 @@ async function handlePerspectives(msg) {
   let result;
   try {
     // Ưu tiên có Google Search grounding → nguồn tra cứu thật
-    result = await geminiRequest({ ...request, grounded: true });
+    result = await geminiRequest({ ...request, grounded: true, timeoutMs: 35000 });
     result.parsed = parseJsonLoose(result.text);
   } catch (err) {
     if (err.status === 401 || err.status === 403) throw err;
-    result = await geminiRequest({ ...request, json: true });
+    result = await geminiRequest({ ...request, json: true, timeoutMs: 40000 });
     result.parsed = parseJsonLoose(result.text);
   }
   const data = normalizePerspectives(result.parsed, result.sources);

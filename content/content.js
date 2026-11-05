@@ -347,6 +347,7 @@ function showDashboard() {
   if (!session) return;
   layerEl.innerHTML = shell(loadingHtml("Đang phân tích đoạn văn..."), false);
   bindShell();
+  armSlowHint();
   if (session.analysis) return showTab("analysis");
 
   send({ type: "AUS_ANALYZE", selectedText: session.text, contextText: session.context, url: location.href })
@@ -357,6 +358,15 @@ function showDashboard() {
       showTab("analysis");
     })
     .catch((err) => showError(err.message, showDashboard));
+}
+
+let slowTimer = null;
+function armSlowHint() {
+  clearTimeout(slowTimer);
+  slowTimer = setTimeout(() => {
+    const m = layerEl?.querySelector(".loading-msg");
+    if (m) m.insertAdjacentHTML("afterend", '<p class="muted small">Đang lâu hơn dự kiến, vui lòng chờ thêm chút...</p>');
+  }, 12000);
 }
 
 function loadingHtml(msg) {
@@ -459,6 +469,7 @@ function renderPerspectives() {
   if (!session.perspectives) {
     layerEl.innerHTML = shell(loadingHtml("Đang tìm các góc nhìn khác & nguồn kiểm chứng..."), "perspectives");
     bindShell();
+    armSlowHint();
     send({
       type: "AUS_PERSPECTIVES",
       selectedText: session.text,
