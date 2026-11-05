@@ -1,10 +1,21 @@
 const $ = (id) => document.getElementById(id);
 
+function markTheme(t) {
+  document.querySelectorAll("#theme button").forEach((b) => b.classList.toggle("on", b.dataset.t === t));
+}
+$("theme").addEventListener("click", (e) => {
+  const t = e.target.dataset?.t;
+  if (!t) return;
+  markTheme(t);
+  chrome.storage.sync.set({ ausTheme: t });
+});
+
 async function load() {
-  const s = await chrome.storage.sync.get(["geminiApiKey", "geminiModel", "ausEnabled", "disabledSites"]);
+  const s = await chrome.storage.sync.get(["geminiApiKey", "geminiModel", "ausEnabled", "disabledSites", "ausTheme"]);
   $("apiKey").value = s.geminiApiKey || "";
   $("model").value = s.geminiModel || "";
   $("enabled").checked = s.ausEnabled !== false;
+  markTheme(s.ausTheme || "auto");
   renderMuted(s.disabledSites || []);
   refreshStats();
 }

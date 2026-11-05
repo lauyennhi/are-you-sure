@@ -8,6 +8,7 @@ const esc = (s) => {
   d.textContent = s ?? "";
   return d.innerHTML;
 };
+const lv = (n, inv) => { const v = inv ? 100 - n : n; return v < 35 ? "ok" : v < 65 ? "warn" : "bad"; };
 const safeUrl = (u) => (/^https?:\/\//.test(u || "") ? u : "");
 
 async function load() {
@@ -53,7 +54,7 @@ function render() {
       <div class="meta"><span>${new Date(it.savedAt).toLocaleString("vi-VN")}</span>
         ${safeUrl(it.url) ? `<a href="${esc(safeUrl(it.url))}" target="_blank" rel="noopener noreferrer">${esc(it.pageTitle || it.url)} ↗</a>` : ""}</div>
       <blockquote>${esc(it.selectedText.length > 280 ? it.selectedText.slice(0, 280) + "…" : it.selectedText)}</blockquote>
-      ${a ? `<div class="stats"><span class="pill p">${a.opposition_percent}% đối lập</span><span class="pill">Phân cực ${a.polarization.score}%</span><span class="pill">Bong bóng ${a.filter_bubble.score}%</span><span class="pill">Buồng vang ${a.echo_chamber.score}%</span></div>` : ""}
+      ${a ? `<div class="stats"><span class="pill ${lv(a.opposition_percent)}">${a.opposition_percent}% đối lập</span><span class="pill ${lv(a.polarization.score)}">Phân cực ${a.polarization.score}%</span><span class="pill ${lv(a.filter_bubble.score)}">Bong bóng ${a.filter_bubble.score}%</span><span class="pill ${lv(a.echo_chamber.score)}">Buồng vang ${a.echo_chamber.score}%</span></div>` : ""}
       <div class="actions"><button data-toggle="${esc(it.id)}">${open.has(it.id) ? "Thu gọn" : "Xem chi tiết"}</button>
         <button class="danger" data-del="${esc(it.id)}">Xoá</button></div>
       ${open.has(it.id) ? `<div class="detail">${detailHtml(it)}</div>` : ""}
@@ -94,3 +95,13 @@ document.getElementById("export").addEventListener("click", () => {
 });
 
 load();
+
+const NEXT = { auto: "light", light: "dark", dark: "auto" };
+const ICON = { auto: "Tự động", light: "Sáng", dark: "Tối" };
+chrome.storage.sync.get("ausTheme").then(({ ausTheme = "auto" }) => (document.getElementById("theme").textContent = ICON[ausTheme]));
+document.getElementById("theme").addEventListener("click", async () => {
+  const { ausTheme = "auto" } = await chrome.storage.sync.get("ausTheme");
+  const n = NEXT[ausTheme];
+  await chrome.storage.sync.set({ ausTheme: n });
+  document.getElementById("theme").textContent = ICON[n];
+});

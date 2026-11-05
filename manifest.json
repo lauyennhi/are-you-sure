@@ -4,14 +4,12 @@
   "short_name": "AUS",
   "version": "0.2.0",
   "description": "Real-time Cognitive Nudge Engine — bôi đen một đoạn văn để xem phân tích phân cực, bong bóng lọc, buồng vang, thiên kiến và các góc nhìn khác có nguồn.",
-
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {
@@ -19,27 +17,35 @@
       "32": "icons/icon32.png"
     }
   },
-
   "background": {
     "service_worker": "background/background.js"
   },
-
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content/content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content/content.js"
+      ],
       "run_at": "document_idle"
     }
   ],
-
   "web_accessible_resources": [
     {
-      "resources": ["icons/icon24.png"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "icons/icon24.png",
+        "fonts/*.woff2"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ],
-
-  "permissions": ["storage", "activeTab"],
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
   "host_permissions": [
     "https://generativelanguage.googleapis.com/*"
   ]

@@ -3,7 +3,7 @@
 Bôi đen một đoạn văn khi lướt Facebook/báo mạng → bong bóng hiện giữa màn hình hỏi
 **"Bạn có muốn xem góc nhìn khác không?"** → dashboard phân tích → góc nhìn khác có nguồn → phản biện cùng AI → lưu vào bộ sưu tập.
 
-Giao diện 3 màu: Forest Green `#1F3D2B` · Sand Beige `#E8DCC4` · Electric Purple `#8B5CF6`.
+Giao diện trắng/đen tối giản, **xanh / vàng / đỏ** chỉ dùng cho số liệu (tốt / trung bình / xấu). Có chế độ **sáng / tối / tự động** (đổi ngay trong dashboard hoặc popup). Font Inter đóng gói sẵn (hỗ trợ tiếng Việt).
 
 ## Cài đặt
 1. Mở `chrome://extensions`, bật **Developer mode**
@@ -25,6 +25,7 @@ Giao diện 3 màu: Forest Green `#1F3D2B` · Sand Beige `#E8DCC4` · Electric P
 manifest.json
 background/background.js   # Gemini, prompt, cache, PII stripping, lưu trữ
 content/content.js         # bong bóng, dashboard, chat (Shadow DOM)
+fonts/                     # Inter (OFL) cho tiếng Việt
 popup/                     # cài đặt: bật/tắt, API key, model, site đã tắt
 collection/                # trang Bộ sưu tập
 ```
