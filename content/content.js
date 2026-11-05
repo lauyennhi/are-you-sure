@@ -482,6 +482,7 @@ function renderPerspectives() {
       selectedText: session.text,
       contextText: session.context,
       comments: session.comments,
+      coreClaim: session.analysis?.core_claim,
       url: location.href,
     })
       .then((res) => {
@@ -501,6 +502,7 @@ function renderPerspectives() {
   const stanceIcon = { "đồng tình": "＋", "phản đối": "−", "trung lập": "○", "bổ sung": "◇" };
   const stanceCls = { "đồng tình": "ok", "phản đối": "bad", "trung lập": "neutral", "bổ sung": "warn" };
   const html = `
+    ${p.topic ? `<p class="topic">Chủ đề: <b>${escapeHtml(p.topic)}</b></p>` : ""}
     ${p.rebuttal ? `<div class="rebuttal"><h3>Phản biện tổng hợp</h3><p>${escapeHtml(p.rebuttal)}</p></div>` : ""}
     <h3>Góc nhìn trong bình luận</h3>
     ${p.comment_perspectives.length
@@ -812,6 +814,8 @@ function getStyles() {
   .rebuttal { background: var(--inv); color: var(--inv-text); border-radius: 18px; padding: 4px 16px 14px; }
   .rebuttal h3 { color: inherit; opacity: .6; }
   .rebuttal p { margin: 0; font-size: 13px; line-height: 1.55; }
+  .topic { margin: 0 0 12px; font-size: 12.5px; color: var(--mute); }
+  .topic b { color: var(--text); }
   .cta { margin-top: 18px; }
 
   /* ---- Loading ---- */

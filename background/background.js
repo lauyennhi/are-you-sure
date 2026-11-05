@@ -105,20 +105,26 @@ biases tối đa 4 mục, fallacies tối đa 3 mục (mảng rỗng nếu khôn
 }
 
 function perspectivesPrompt() {
-  return `Bạn là chuyên gia tư duy phản biện đa ngành của công cụ "Are You Sure". Nhiệm vụ: mở rộng góc nhìn cho người dùng về đoạn văn họ vừa đọc trên mạng — phản biện có căn cứ và đưa thêm góc nhìn mới, không áp đặt.
+  return `Bạn là biên tập viên kiểm chứng & phản biện đa ngành của công cụ "Are You Sure". Người dùng vừa bôi đen một đoạn văn trên mạng. Nhiệm vụ: cho họ thấy những góc nhìn khác VỀ CHÍNH CHỦ ĐỀ / NỘI DUNG của đoạn văn đó, có căn cứ chuyên môn và nguồn.
+
+NGUYÊN TẮC QUAN TRỌNG NHẤT — BÁM SÁT CHỦ ĐỀ:
+- Xác định đoạn văn nói về VẤN ĐỀ THỰC TẾ gì (ví dụ: thuốc lá điện tử, giá nhà, bầu cử, một loại thực phẩm, một vụ án, giáo dục...). Mọi góc nhìn phải bàn về vấn đề thực tế đó: sự kiện, số liệu, quy định, cơ chế, hệ quả, lập luận của các phía.
+- TUYỆT ĐỐI KHÔNG viết về phân cực, bong bóng lọc, buồng vang, thiên kiến nhận thức, ngụy biện, thuật toán mạng xã hội, "tư duy phản biện nói chung"... Phần đó đã có ở tab khác. Chỉ được nhắc tới nếu chính đoạn văn nói về những chủ đề đó.
+- Mỗi góc nhìn phải trả lời được: "Chuyên ngành này nói gì về CHÍNH điều đoạn văn khẳng định?" — nêu dữ kiện/quy định/nghiên cứu cụ thể, chỉ ra chỗ đoạn văn đúng, thiếu, hoặc sai.
 
 Hãy:
-1. Tóm tắt các góc nhìn có trong BÌNH LUẬN thật được cung cấp (nếu không có bình luận, trả mảng rỗng — KHÔNG được bịa bình luận).
-2. Đưa 4-6 góc nhìn chuyên môn từ các lĩnh vực phù hợp nhất: Pháp luật (ưu tiên pháp luật Việt Nam, ghi số hiệu văn bản + điều khoản), Tâm lý học, Triết học, Xã hội học, Kinh tế học, Khoa học/Y học, Lịch sử, Truyền thông... Mỗi góc nhìn có nguồn chứng thực.
-3. Viết một đoạn phản biện tổng hợp với đoạn văn.
-4. Đưa 2-4 góc nhìn mới ít người nghĩ tới, và 2-3 câu hỏi tự vấn giúp người đọc tự kiểm chứng.
+1. Tóm tắt các góc nhìn có trong BÌNH LUẬN thật được cung cấp (không có bình luận → mảng rỗng, KHÔNG bịa).
+2. Chọn 4-6 lĩnh vực THỰC SỰ liên quan tới chủ đề này (ví dụ: Pháp luật — ưu tiên pháp luật Việt Nam, ghi số hiệu văn bản + điều khoản nếu chắc chắn; Y học/Khoa học; Kinh tế học; Xã hội học; Lịch sử; Đạo đức/Triết học; Tâm lý học khi chủ đề liên quan hành vi con người...). Không ép đủ lĩnh vực nếu không liên quan.
+3. Viết đoạn phản biện tổng hợp trực tiếp vào luận điểm của đoạn văn (đúng điểm nào, thiếu điểm nào, cần kiểm chứng gì).
+4. Đưa 2-4 góc nhìn mới về chủ đề (ai bị ảnh hưởng, bối cảnh nước khác, mặt trái/lợi ích bị bỏ qua...) và 2-3 câu hỏi giúp người đọc tự kiểm chứng CHÍNH vấn đề đó.
 
 ${COMMON_RULES}
 
 JSON đầu ra:
 {
+  "topic": "chủ đề thực tế của đoạn văn, ≤ 10 từ",
   "comment_perspectives": [ { "stance": "đồng tình" | "phản đối" | "trung lập" | "bổ sung", "viewpoint": "≤ 30 từ", "share": number (ước lượng % bình luận mang góc nhìn này) } ],
-  "expert_perspectives": [ { "domain": "Pháp luật" | "Tâm lý học" | "Triết học" | "Xã hội học" | "Kinh tế học" | "Khoa học" | "Lịch sử" | "Truyền thông" | "Khác", "title": "≤ 12 từ", "content": "≤ 60 từ", "sources": [ { "name": "tên nguồn cụ thể", "url": "" } ] } ],
+  "expert_perspectives": [ { "domain": "Pháp luật" | "Y học" | "Khoa học" | "Kinh tế học" | "Xã hội học" | "Lịch sử" | "Triết học" | "Tâm lý học" | "Khác", "title": "≤ 12 từ, nêu đúng điểm của chủ đề", "content": "≤ 60 từ, dữ kiện/quy định/nghiên cứu cụ thể", "sources": [ { "name": "tên nguồn cụ thể", "url": "" } ] } ],
   "rebuttal": "đoạn phản biện ≤ 90 từ",
   "new_angles": [ "≤ 30 từ" ],
   "questions_to_ask": [ "≤ 25 từ" ]
@@ -138,8 +144,9 @@ Luận điểm chính: ${ctx.coreClaim || "(chưa rõ)"}
 Phân tích trước đó: ${ctx.summary || "(không có)"}`;
 }
 
-function buildUserContent({ selectedText, contextText, comments, url }) {
+function buildUserContent({ selectedText, contextText, comments, url, coreClaim }) {
   const parts = [`URL nguồn: ${url || "(không rõ)"}`];
+  if (coreClaim) parts.push(`Luận điểm chính đã xác định: ${coreClaim}`);
   if (contextText) parts.push(`<context>${contextText}</context>`);
   if (comments?.length) {
     parts.push(`<comments>\n${comments.map((c, i) => `${i + 1}. ${c}`).join("\n")}\n</comments>`);
@@ -293,6 +300,7 @@ function normalizeAnalysis(d) {
 
 function normalizePerspectives(d, groundedSources = []) {
   return {
+    topic: str(d.topic),
     comment_perspectives: arr(d.comment_perspectives).slice(0, 5).map((c) => ({
       stance: str(c.stance) || "trung lập",
       viewpoint: str(c.viewpoint),
@@ -388,6 +396,7 @@ function mockAnalysis(text) {
 }
 
 function mockPerspectives(text, comments) {
+  const excerpt = text.split(/\s+/).slice(0, 12).join(" ") + "…";
   const commentViews = comments?.length
     ? [
         { stance: "đồng tình", viewpoint: "Một phần bình luận đồng tình và kể trải nghiệm cá nhân tương tự.", share: 45 },
@@ -396,42 +405,21 @@ function mockPerspectives(text, comments) {
       ]
     : [];
   return {
+    topic: "",
     comment_perspectives: commentViews,
     expert_perspectives: [
       {
-        domain: "Tâm lý học",
-        title: "Hai hệ thống tư duy",
-        content: "Nội dung gây cảm xúc mạnh kích hoạt 'Hệ thống 1' (nhanh, trực giác). Dừng lại để kiểm chứng giúp 'Hệ thống 2' (chậm, lý trí) hoạt động và giảm sai lệch phán đoán.",
-        sources: [{ name: "Daniel Kahneman — Thinking, Fast and Slow (2011)", url: "" }],
-      },
-      {
-        domain: "Truyền thông",
-        title: "Bong bóng lọc của thuật toán",
-        content: "Thuật toán ưu tiên nội dung giống những gì bạn đã tương tác, khiến bạn thấy một quan điểm lặp lại nhiều lần và tưởng đó là số đông.",
-        sources: [{ name: "Eli Pariser — The Filter Bubble (2011)", url: "" }],
-      },
-      {
-        domain: "Pháp luật",
-        title: "Trách nhiệm khi chia sẻ thông tin",
-        content: "Đăng tải, chia sẻ thông tin sai sự thật gây hoang mang có thể bị xử lý theo pháp luật. Kiểm chứng trước khi chia sẻ vừa là kỹ năng vừa là trách nhiệm.",
-        sources: [{ name: "Luật An ninh mạng 2018 (Luật số 24/2018/QH14), Điều 16", url: "" }],
-      },
-      {
-        domain: "Triết học",
-        title: "Biết rằng mình chưa biết",
-        content: "Socrates cho rằng khởi đầu của hiểu biết là thừa nhận giới hạn hiểu biết của mình. Đặt câu hỏi 'bằng chứng nào?' tốt hơn vội kết luận.",
-        sources: [{ name: "Plato — Apology (Lời biện hộ của Socrates)", url: "" }],
+        domain: "Chế độ demo",
+        title: "Cần API key để có góc nhìn theo chủ đề",
+        content: `Góc nhìn pháp luật, y học, kinh tế, xã hội... về nội dung “${excerpt}” chỉ có khi bật AI thật. Dán Gemini API key trong popup extension để xem.`,
+        sources: [],
       },
     ],
-    rebuttal: "Đoạn văn có thể phản ánh một phần sự thật, nhưng việc khái quát cho toàn bộ cần dữ liệu đại diện. Thiếu nguồn kiểm chứng và dùng ngôn từ tuyệt đối khiến kết luận yếu hơn vẻ ngoài của nó.",
-    new_angles: [
-      "Ai được lợi nếu nhiều người tin và chia sẻ đoạn này?",
-      "Nếu nhìn từ phía nhóm bị nhắc đến, câu chuyện có thể khác thế nào?",
-      "Vấn đề này có thay đổi theo thời gian, địa điểm hay bối cảnh không?",
-    ],
+    rebuttal: "",
+    new_angles: [],
     questions_to_ask: [
       "Nguồn gốc của thông tin này là gì, có thể kiểm chứng độc lập không?",
-      "Mình có đang tin vì nó hợp với điều mình vốn nghĩ?",
+      "Có số liệu hoặc văn bản chính thức nào xác nhận hay bác bỏ điều này?",
     ],
     verified_sources: [],
     _demo_mode: true,
@@ -481,7 +469,7 @@ async function handlePerspectives(msg) {
   const request = {
     apiKey, model,
     system: perspectivesPrompt(),
-    contents: [{ role: "user", parts: [{ text: buildUserContent({ selectedText, contextText, comments, url: msg.url }) }] }],
+    contents: [{ role: "user", parts: [{ text: buildUserContent({ selectedText, contextText, comments, url: msg.url, coreClaim: str(msg.coreClaim) }) }] }],
   };
 
   let result;
