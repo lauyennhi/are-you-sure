@@ -10,8 +10,10 @@
 // =====================================================
 
 const DEFAULT_MODEL = "gemini-3.8-flash"; // có thể đổi trong popup cài đặt
-// Nếu model bị ngừng/không tồn tại (404) → tự thử model kế tiếp
-const FALLBACK_MODELS = ["gemini-3.8-flash", "gemini-flash-latest"];
+// Model lỗi (404 ngừng cấp / 429 hết hạn mức / 5xx quá tải / quá lâu) → tự thử model kế tiếp.
+// Model "lite" ở cuối vì ổn định, nhanh hơn khi các model lớn đang quá tải.
+const FALLBACK_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite"];
+const RETRYABLE = new Set([404, 429, 500, 502, 503, 504, "timeout", "network", "empty"]);
 const CACHE_TTL_SEC = 86400 * 3;
 const CACHE_MAX_ENTRIES = 200;
 
@@ -219,21 +221,36 @@ async function geminiRequestOnce({ apiKey, model, system, contents, json, ground
 }
 
 async function geminiRequest(opts) {
-  const tried = new Set();
-  const candidates = [opts.model, ...FALLBACK_MODELS];
-  let lastErr;
-  for (const model of candidates) {
-    if (!model || tried.has(model)) continue;
-    tried.add(model);
-    try {
-      const res = await geminiRequestOnce({ ...opts, model });
-      if (model !== opts.model) chrome.storage.sync.set({ geminiModel: model }).catch(() => {}); // nhớ model chạy được
-      return res;
-    } catch (err) {
-      lastErr = err;
-      if (err.status !== 404) throw err; // lỗi khác (key sai, hết hạn mức...) → báo ngay
+  const candidates = [...new Set([opts.model, ...FALLBACK_MODELS].filter(Boolean))].slice(0, opts.maxModels || 99);
+  const deadline = Date.now() + 55000; // tổng thời gian tối đa cho một yêu cầu
+  let lastErr, only404 = true;
+
+  // Tối đa 2 lượt: lượt 2 chỉ chạy khi lỗi là quá tải tạm thời (429/5xx), chờ 1.5s rồi thử lại
+  for (let pass = 0; pass < 2; pass++) {
+    let transient = false;
+    for (let i = 0; i < candidates.length; i++) {
+      const model = candidates[i];
+      const remaining = deadline - Date.now();
+      if (remaining < 3000) break;
+      const isLast = i === candidates.length - 1;
+      // model đầu chỉ chờ 15s để còn kịp thử model khác
+      const timeoutMs = Math.min(remaining, isLast ? opts.timeoutMs || 40000 : Math.min(opts.timeoutMs || 40000, 15000));
+      try {
+        const res = await geminiRequestOnce({ ...opts, model, timeoutMs });
+        // chỉ ghi nhớ model thay thế khi model cũ đã bị ngừng hẳn (404), không phải do quá tải tạm thời
+        if (model !== opts.model && only404 && pass === 0) chrome.storage.sync.set({ geminiModel: model }).catch(() => {});
+        return res;
+      } catch (err) {
+        lastErr = err;
+        if (err.status !== 404) only404 = false;
+        if (!RETRYABLE.has(err.status)) throw err; // key sai, request sai... → báo ngay
+        if (err.status === 429 || (typeof err.status === "number" && err.status >= 500)) transient = true;
+      }
     }
+    if (!transient || Date.now() > deadline - 5000) break;
+    await new Promise((r) => setTimeout(r, 1500));
   }
+  lastErr.message += " — các model dự phòng cũng đang lỗi/quá tải, hãy thử lại sau ít phút.";
   throw lastErr;
 }
 
@@ -470,7 +487,7 @@ async function handlePerspectives(msg) {
   let result;
   try {
     // Ưu tiên có Google Search grounding → nguồn tra cứu thật
-    result = await geminiRequest({ ...request, grounded: true, timeoutMs: 35000 });
+    result = await geminiRequest({ ...request, grounded: true, timeoutMs: 25000, maxModels: 2 });
     result.parsed = parseJsonLoose(result.text);
   } catch (err) {
     if (err.status === 401 || err.status === 403) throw err;
