@@ -283,7 +283,9 @@ function popBubble() {
     layerEl.appendChild(p);
     setTimeout(() => p.remove(), 800);
   }
-  setTimeout(showDashboard, 380);
+  setTimeout(() => {
+    try { showDashboard(); } catch (err) { console.error('[AUS]', err); showError('Không hiển thị được kết quả: ' + (err?.message || err), showDashboard); }
+  }, 380);
 }
 
 function closeAll() {
@@ -390,9 +392,14 @@ function showError(message, retry) {
 
 function showTab(name) {
   if (!session) return;
-  if (name === "analysis") renderAnalysis();
-  else if (name === "perspectives") renderPerspectives();
-  else renderChat();
+  try {
+    if (name === "analysis") renderAnalysis();
+    else if (name === "perspectives") renderPerspectives();
+    else renderChat();
+  } catch (err) {
+    console.error('[AUS]', err);
+    showError('Không hiển thị được kết quả: ' + (err?.message || err), () => showTab(name));
+  }
 }
 
 // --- Tab: Phân tích ---

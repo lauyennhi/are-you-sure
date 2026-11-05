@@ -9,10 +9,10 @@
 //  - AUS_OPEN_COLLECTION / AUS_DISABLE_SITE
 // =====================================================
 
-const DEFAULT_MODEL = "gemini-3.8-flash"; // có thể đổi trong popup cài đặt
+const DEFAULT_MODEL = "gemini-3.5-flash-lite"; // nhanh & ổn định; có thể đổi sang model lớn hơn trong popup
 // Model lỗi (404 ngừng cấp / 429 hết hạn mức / 5xx quá tải / quá lâu) → tự thử model kế tiếp.
-// Model "lite" ở cuối vì ổn định, nhanh hơn khi các model lớn đang quá tải.
-const FALLBACK_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite"];
+// Ưu tiên model nhanh/ổn định; model lớn để cuối vì hay quá tải, treo.
+const FALLBACK_MODELS = ["gemini-3.1-flash-lite", "gemini-3-flash-preview", "gemini-3.8-flash"];
 const RETRYABLE = new Set([404, 429, 500, 502, 503, 504, "timeout", "network", "empty"]);
 const CACHE_TTL_SEC = 86400 * 3;
 const CACHE_MAX_ENTRIES = 200;
