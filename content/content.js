@@ -599,12 +599,48 @@ function renderChat() {
     box.scrollTop = box.scrollHeight;
   };
   form.addEventListener("submit", (e) => { e.preventDefault(); submit(); });
-  ta.addEventListener("keydown", (e) => {
-    e.stopPropagation(); // tránh phím tắt của trang
-    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); submit(); }
-    if (e.key === "Escape") closeAll();
-  });
-  ta.addEventListener("keyup", (e) => e.stopPropagation());
+  ta._ausSubmit = submit; // phím Enter được xử lý trong guardFieldKeys (bên dưới)
+}
+
+// ---------------------------------------------------
+// Bảo vệ ô nhập liệu khỏi phím tắt của trang (Facebook dùng Space, J, K, L... và chặn chúng).
+// Vì ô chat nằm trong Shadow DOM, trang chỉ thấy event từ thẻ host (không phải ô nhập) nên chặn luôn.
+// → Bắt event ở window (capture) TRƯỚC listener của trang, chặn không cho lan tới trang;
+//   nếu trang đã kịp chặn (preventDefault) thì tự chèn ký tự.
+// ---------------------------------------------------
+function ourField(e) {
+  const t = e.composedPath?.()[0];
+  return t && root && (t.tagName === "TEXTAREA" || t.tagName === "INPUT") && root.contains(t) ? t : null;
+}
+
+function insertText(field, text) {
+  const { selectionStart: a, selectionEnd: b } = field;
+  field.setRangeText(text, a, b, "end");
+  field.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function guardFieldKeys(e) {
+  const field = ourField(e);
+  if (!field) return;
+  e.stopImmediatePropagation(); // trang không nhận được phím
+  if (e.type !== "keydown") return;
+  if (e.key === "Escape") { e.preventDefault(); closeAll(); return; }
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); field._ausSubmit?.(); return; }
+  // Trang đã chặn phím (listener của trang đăng ký trước mình) → tự gõ thay
+  if (e.defaultPrevented && !e.isComposing && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (e.key.length === 1) insertText(field, e.key);
+    else if (e.key === "Enter") insertText(field, "\n");
+    else if (e.key === "Backspace" || e.key === "Delete") {
+      const { selectionStart: a, selectionEnd: b } = field;
+      if (a !== b) field.setRangeText("", a, b, "end");
+      else if (e.key === "Backspace" && a > 0) field.setRangeText("", a - 1, a, "end");
+      else if (e.key === "Delete") field.setRangeText("", a, a + 1, "end");
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  }
+}
+for (const type of ["keydown", "keypress", "keyup", "beforeinput", "input"]) {
+  window.addEventListener(type, guardFieldKeys, true);
 }
 
 // ---------------------------------------------------
